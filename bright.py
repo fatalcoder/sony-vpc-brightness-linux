@@ -5,7 +5,7 @@
 # github.com/ricardodani
 # ricardodani@gmail.com
 
-'''
+"""
 Class to change brightness in Sony VPC Series notebook`s in Linux.
 
     >>> b = Brightness()
@@ -26,7 +26,7 @@ Class to change brightness in Sony VPC Series notebook`s in Linux.
     >>> '%.1f' % b.actual_bright_ratio # get the actual brightness percentage
     '0.9'
     >>>
-'''
+"""
 
 import sys
 import commands
@@ -34,15 +34,18 @@ import commands
 _COMMANDS = {
     'max': 'cat /sys/class/backlight/intel_backlight/max_brightness',
     'change': 'echo %d| tee /sys/class/backlight/intel_backlight/brightness',
-    'actual': 'cat /sys/class/backlight/intel_backlight/brightness'
+    'actual': 'cat /sys/class/backlight/intel_backlight/brightness',
+    'username': 'whoami'
 }
 _MIN_BRIGHT_RATIO = 0.1
 _STEP = 0.05
 
+
 class Brightness:
-    '''Manipulates the brightness of SONY VPC Series notebook`s display.
-    '''
-    
+    """
+    Manipulates the brightness of SONY VPC Series notebook`s display.
+    """
+
     def __init__(self):
         self._output = []
         self._max = self._get_max_bright()
@@ -63,8 +66,11 @@ class Brightness:
     def _execute_command(self, command, verbose=False):
         self._output.append(commands.getoutput(command))
         if verbose:
-            print _get_last_output()
+            print self._get_last_output()
         return self._get_last_output()
+
+    def _convert_to_percent_value(self, value):
+        return round(float(value) / self._get_max_bright() * 100)
 
     @property
     def max_bright(self):
@@ -80,7 +86,7 @@ class Brightness:
 
     @property
     def actual_bright(self):
-        return self._get_current_bright()
+        return self._convert_to_percent_value(self._get_current_bright())
 
     @property
     def actual_bright_ratio(self):
@@ -99,14 +105,14 @@ class Brightness:
 
     def set_max(self):
         self.set(100)
-        
+
     def set(self, percent, verbose=False):
         min_bright = 100 * _MIN_BRIGHT_RATIO
-        if (min_bright) <= percent <= 100:
+        if min_bright <= percent <= 100:
             bright = int(self._max * (percent/100.))
             self._execute_command(_COMMANDS['change'] % bright)
             if verbose:
-                print 'Setted percentage to %d%%.' % percent
+                print 'Changed brightness level to: %d%%.' % percent
         else:
             if percent > 100:
                 self.set(100)
@@ -114,27 +120,46 @@ class Brightness:
                 self.set(min_bright)
             print 'Wrong percentage. Must be > %d%% and < 100%%.' % min_bright
 
+    def is_privileged(self):
+        return self._execute_command(_COMMANDS['username']) == 'root'
+
+    def actual_brightness_string(self):
+        return int(self.actual_bright).__str__() + '%'
+
+
 if __name__ == '__main__':
     b = Brightness()
-    if len(sys.argv) == 2:
-        if sys.argv[1] == 'up':
-            b.set_up()
-        elif sys.argv[1] == 'down':
-            b.set_down()
-        elif sys.argv[1] == 'min':
-            b.set_min()
-        elif sys.argv[1] == 'max':
-            b.set_max()
-        elif sys.argv[1] == 'actual':
-            print b.actual_bright
-        elif sys.argv[1] == 'help':
-            print ("bright.py - Usage\n\n"
-                "<value> : set a numerical percentage brightness value\n"
-                "up : set brightness up\n"
-                "down : set brightness down\n"
-                "min : set minimum brightness\n"
-                "max : set maximum brightness\n"
-                "actual : view the actual brightness value\n"
-                "help : claim for help\n")
+
+    if len(sys.argv) == 1:
+        sys.argv = (sys.argv, 'actual')
+
+    option = sys.argv[1]
+
+    if option not in ('actual', 'help'):
+        if not b.is_privileged():
+            print 'Run script as root!'
         else:
-            b.set(int(sys.argv[1]))
+            if option == 'up':
+                b.set_up()
+            elif option == 'down':
+                b.set_down()
+            elif option == 'min':
+                b.set_min()
+            elif option == 'max':
+                b.set_max()
+            else:
+                b.set(int(option))
+    else:
+        if option == 'actual':
+            print 'Actual brightness level is: ', b.actual_brightness_string()
+        else:
+            print (
+                "bright.py - Usage\n\n"
+                "\t<value> : set a numerical percentage brightness value\n"
+                "\tup : set brightness up\n"
+                "\tdown : set brightness down\n"
+                "\tmin : set minimum brightness\n"
+                "\tmax : set maximum brightness\n"
+                "\tactual : view the actual brightness value\n"
+                "\thelp : claim for help\n"
+            )
