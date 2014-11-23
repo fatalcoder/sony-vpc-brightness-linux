@@ -22,7 +22,7 @@ Class to change brightness in Sony VPC Series notebook`s in Linux.
     >>> type(b.max_bright) == type(1)
     True
     >>> b.set(90, True)
-    Setted percentage to 90%.
+    Changed brightness level to: 90%.
     >>> '%.1f' % b.actual_bright_ratio # get the actual brightness percentage
     '0.9'
     >>>
@@ -63,14 +63,9 @@ class Brightness:
     def _get_current_bright(self):
         return int(self._execute_command(_COMMANDS['actual']))
 
-    def _execute_command(self, command, verbose=False):
+    def _execute_command(self, command):
         self._output.append(commands.getoutput(command))
-        if verbose:
-            print self._get_last_output()
         return self._get_last_output()
-
-    def _convert_to_percent_value(self, value):
-        return round(float(value) / self._get_max_bright() * 100)
 
     @property
     def max_bright(self):
@@ -86,11 +81,15 @@ class Brightness:
 
     @property
     def actual_bright(self):
-        return self._convert_to_percent_value(self._get_current_bright())
+        return self._get_current_bright()
 
     @property
     def actual_bright_ratio(self):
-        return self._get_current_bright() / float(self._max)
+        return round(self._get_current_bright() / float(self._max), 2)
+
+    @property
+    def actual_bright_ratio_string(self):
+        return (self.actual_bright_ratio * 100).__str__()
 
     def set_up(self):
         new_value = int(100 * (self.actual_bright_ratio + _STEP))
@@ -123,9 +122,6 @@ class Brightness:
     def is_privileged(self):
         return self._execute_command(_COMMANDS['username']) == 'root'
 
-    def actual_brightness_string(self):
-        return int(self.actual_bright).__str__() + '%'
-
 
 if __name__ == '__main__':
     b = Brightness()
@@ -151,7 +147,7 @@ if __name__ == '__main__':
                 b.set(int(option))
     else:
         if option == 'actual':
-            print 'Actual brightness level is: ', b.actual_brightness_string()
+            print 'Actual brightness level is: %d%%' % b.actual_bright_ratio_string
         else:
             print (
                 "bright.py - Usage\n\n"
